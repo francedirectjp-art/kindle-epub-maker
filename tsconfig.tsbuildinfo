@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/mammoth.d.ts","./src/components/stepcover.tsx","./src/components/stepgenerate.tsx","./src/components/stepmetadata.tsx","./src/components/stepoptions.tsx","./src/components/stepupload.tsx","./src/components/stepper.tsx","./src/lib/docx.ts","./src/lib/epub.ts","./src/lib/types.ts"],"version":"5.9.3"}
