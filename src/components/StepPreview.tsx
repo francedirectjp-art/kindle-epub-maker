@@ -8,6 +8,14 @@ import type {
   ExtractedImage,
 } from "../lib/types";
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 interface StepPreviewProps {
   arrayBuffer: ArrayBuffer | null;
   metadata: BookMetadata;
@@ -97,6 +105,24 @@ export default function StepPreview({
     ? rewriteImageSrc(currentChapter.html, data!.imageUrls)
     : "";
 
+  const iframeSrcDoc = useMemo(() => {
+    if (!currentChapter) return "";
+    return `<!doctype html>
+<html lang="${escapeHtml(metadata.language || "ja")}">
+<head>
+<meta charset="utf-8"/>
+<style>
+${css}
+html, body { background: #faf9f6; }
+${vertical ? "html, body { height: 100%; }" : ""}
+</style>
+</head>
+<body>
+${renderedHtml}
+</body>
+</html>`;
+  }, [currentChapter, renderedHtml, css, vertical, metadata.language]);
+
   return (
     <div>
       <h2 className="text-xl font-bold text-stone-900">5. プレビュー</h2>
@@ -159,25 +185,14 @@ export default function StepPreview({
               {currentChapter?.title || `第${activeIndex + 1}章`}
             </div>
 
-            <style>{`
-              .epub-preview-frame {
-                ${vertical ? "height: 70vh;" : "max-height: 70vh;"}
-                overflow: auto;
-                background: #faf9f6;
-              }
-              .epub-preview-frame .epub-content {
-                ${vertical ? "height: 100%;" : ""}
-                padding: 1.5em;
-                color: #1a1a1a;
-                ${css.replace(/^@charset[^;]+;\s*/, "")}
-              }
-            `}</style>
-            <div className="epub-preview-frame">
-              <div
-                className="epub-content"
-                dangerouslySetInnerHTML={{ __html: renderedHtml }}
-              />
-            </div>
+            <iframe
+              key={`${activeIndex}-${options.writingMode}-${options.lineHeight}-${options.paragraphSpacing}`}
+              title="EPUB プレビュー"
+              srcDoc={iframeSrcDoc}
+              sandbox="allow-same-origin"
+              className="block w-full border-0"
+              style={{ height: "70vh", background: "#faf9f6" }}
+            />
           </div>
 
           <p className="mt-3 text-xs text-stone-400">
