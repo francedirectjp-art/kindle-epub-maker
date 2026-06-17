@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { saveAs } from "file-saver";
-import { parseDocx } from "../lib/docx";
+import { applyVerticalCharSpacing, parseDocx } from "../lib/docx";
 import { buildEpub, safeFilename } from "../lib/epub";
-import type {
-  BookMetadata,
-  ConversionOptions,
-  CoverImage,
+import {
+  VERTICAL_LETTER_SPACING_VALUES,
+  type BookMetadata,
+  type ConversionOptions,
+  type CoverImage,
 } from "../lib/types";
 
 interface StepGenerateProps {
@@ -41,11 +42,24 @@ export default function StepGenerate({
     try {
       // ArrayBuffer は内部で detach されうるのでコピーを渡す
       const parsed = await parseDocx(arrayBuffer.slice(0), options);
+      // 縦書きで letter-spacing が効かないリーダー対策:
+      // 各文字を span でくるんで padding-bottom を当てる方法に切り替える
+      const spacing =
+        options.writingMode === "vertical"
+          ? VERTICAL_LETTER_SPACING_VALUES[options.lineHeight]
+          : 0;
+      const chapters =
+        spacing > 0
+          ? parsed.chapters.map((ch) => ({
+              ...ch,
+              html: applyVerticalCharSpacing(ch.html, spacing),
+            }))
+          : parsed.chapters;
       const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
       const blob = await buildEpub({
         metadata,
         options,
-        chapters: parsed.chapters,
+        chapters,
         images: parsed.images,
         cover,
         modified,

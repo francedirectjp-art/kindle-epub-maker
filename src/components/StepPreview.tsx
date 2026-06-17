@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { parseDocx } from "../lib/docx";
+import { applyVerticalCharSpacing, parseDocx } from "../lib/docx";
 import { styleCss } from "../lib/epub";
-import type {
-  BookMetadata,
-  Chapter,
-  ConversionOptions,
-  ExtractedImage,
+import {
+  VERTICAL_LETTER_SPACING_VALUES,
+  type BookMetadata,
+  type Chapter,
+  type ConversionOptions,
+  type ExtractedImage,
 } from "../lib/types";
 
 function escapeHtml(s: string): string {
@@ -101,9 +102,13 @@ export default function StepPreview({
   const vertical = options.writingMode === "vertical";
 
   const currentChapter = data?.chapters[activeIndex];
-  const renderedHtml = currentChapter
-    ? rewriteImageSrc(currentChapter.html, data!.imageUrls)
-    : "";
+  const renderedHtml = useMemo(() => {
+    if (!currentChapter || !data) return "";
+    const withImages = rewriteImageSrc(currentChapter.html, data.imageUrls);
+    if (options.writingMode !== "vertical") return withImages;
+    const spacing = VERTICAL_LETTER_SPACING_VALUES[options.lineHeight];
+    return applyVerticalCharSpacing(withImages, spacing);
+  }, [currentChapter, data, options.writingMode, options.lineHeight]);
 
   const iframeSrcDoc = useMemo(() => {
     if (!currentChapter) return "";

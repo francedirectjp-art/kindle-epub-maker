@@ -169,3 +169,69 @@ export async function previewText(arrayBuffer: ArrayBuffer): Promise<string> {
   const res = await mammoth.extractRawText({ arrayBuffer });
   return res.value.slice(0, 600);
 }
+
+/**
+ * 縦書き向けに「字と字のあいだ」を広げる。
+ * letter-spacing は Safari / Kindle Previewer の縦書きで効かないため、
+ * 本文ブロック内の各文字を span でくるみ、padding-bottom を当てる。
+ * 縦書きでは padding-bottom が「次の文字の手前のアキ」になるので確実に効く。
+ * 見出し (h1〜h4) と img/br/コード等はスキップして読みやすさを保つ。
+ */
+const SKIP_TAGS = new Set([
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "img",
+  "br",
+  "code",
+  "pre",
+]);
+
+export function applyVerticalCharSpacing(
+  html: string,
+  spacingEm: number,
+): string {
+  if (spacingEm <= 0) return html;
+
+  const xmlDoc = new DOMParser().parseFromString(
+    `<root xmlns="http://www.w3.org/1999/xhtml">${html}</root>`,
+    "application/xhtml+xml",
+  );
+  if (xmlDoc.getElementsByTagName("parsererror").length > 0) return html;
+
+  const NS = "http://www.w3.org/1999/xhtml";
+  const styleValue = `padding-bottom:${spacingEm}em;`;
+
+  const wrap = (node: Node) => {
+    const children = Array.from(node.childNodes);
+    for (const child of children) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = child.nodeValue ?? "";
+        if (!text || !text.trim()) continue;
+        const frag = xmlDoc.createDocumentFragment();
+        for (const ch of Array.from(text)) {
+          if (ch === "\n" || ch === " " || ch === "\t" || ch === "　") {
+            frag.appendChild(xmlDoc.createTextNode(ch));
+            continue;
+          }
+          const span = xmlDoc.createElementNS(NS, "span");
+          span.setAttribute("style", styleValue);
+          span.textContent = ch;
+          frag.appendChild(span);
+        }
+        node.replaceChild(frag, child);
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const tag = (child as Element).tagName.toLowerCase();
+        if (SKIP_TAGS.has(tag)) continue;
+        wrap(child);
+      }
+    }
+  };
+
+  wrap(xmlDoc.documentElement);
+
+  let s = new XMLSerializer().serializeToString(xmlDoc.documentElement);
+  s = s.replace(/^<root[^>]*>/, "").replace(/<\/root>\s*$/, "");
+  return s;
+}
