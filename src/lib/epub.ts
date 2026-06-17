@@ -75,6 +75,11 @@ export function styleCss(options: ConversionOptions): string {
   const pSpace = PARAGRAPH_SPACING_VALUES[options.paragraphSpacing];
   const ls = vertical ? VERTICAL_LETTER_SPACING_VALUES[options.lineHeight] : 0;
   const letterSpacingDecl = ls ? `\n  letter-spacing: ${ls}em;` : "";
+  // 縦書きで letter-spacing をブロック要素ひとつひとつにも当てる。
+  // 親 (body) からの継承が一部リーダーで効かないケースの対策。
+  const verticalLetterRule = ls
+    ? `\np, h1, h2, h3, h4, blockquote, li, div { letter-spacing: ${ls}em; }`
+    : "";
   return `@charset "UTF-8";
 html {
 ${writing}}
@@ -94,7 +99,7 @@ img { max-width: 100%; height: auto; }
 ol, ul { margin: 0.5em 0 0.5em 1.5em; }
 nav#toc ol { list-style: none; padding: 0; }
 nav#toc li { margin: 0.4em 0; }
-nav#toc a { text-decoration: none; color: #1a1a1a; }
+nav#toc a { text-decoration: none; color: #1a1a1a; }${verticalLetterRule}
 `;
 }
 
