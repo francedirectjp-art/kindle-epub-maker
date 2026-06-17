@@ -2,6 +2,7 @@ import JSZip from "jszip";
 import {
   LINE_HEIGHT_VALUES,
   PARAGRAPH_SPACING_VALUES,
+  VERTICAL_LETTER_SPACING_VALUES,
   type BookMetadata,
   type Chapter,
   type ConversionOptions,
@@ -72,12 +73,14 @@ export function styleCss(options: ConversionOptions): string {
     : "";
   const lh = LINE_HEIGHT_VALUES[options.lineHeight];
   const pSpace = PARAGRAPH_SPACING_VALUES[options.paragraphSpacing];
+  const ls = vertical ? VERTICAL_LETTER_SPACING_VALUES[options.lineHeight] : 0;
+  const letterSpacingDecl = ls ? `\n  letter-spacing: ${ls}em;` : "";
   return `@charset "UTF-8";
 html {
 ${writing}}
 body {
   margin: 1em 1.2em;
-  line-height: ${lh};
+  line-height: ${lh};${letterSpacingDecl}
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
 }
 h1 { font-size: 1.6em; margin: 1.4em 0 0.8em; font-weight: bold; line-height: 1.4; }

@@ -20,6 +20,18 @@ export const LINE_HEIGHT_VALUES: Record<LineHeightLevel, number> = {
   loose: 2.5,
 };
 
+/**
+ * 縦書き時に line-height だけだと「列と列の幅」しか広がらず、
+ * 読み手が期待する「字と字のあいだ」の空きが見えない。
+ * そこで縦書き時のみ letter-spacing を連動させて視覚的な「行間」を表現する。
+ */
+export const VERTICAL_LETTER_SPACING_VALUES: Record<LineHeightLevel, number> = {
+  tight: 0,
+  normal: 0.05,
+  relaxed: 0.12,
+  loose: 0.2,
+};
+
 export const PARAGRAPH_SPACING_VALUES: Record<ParagraphSpacingLevel, number> = {
   none: 0,
   normal: 0.6,
