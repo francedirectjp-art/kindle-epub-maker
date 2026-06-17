@@ -8,6 +8,24 @@ export interface BookMetadata {
   description: string;
 }
 
+/** 行間の段階 */
+export type LineHeightLevel = "tight" | "normal" | "relaxed" | "loose";
+/** 段落間アキの段階 */
+export type ParagraphSpacingLevel = "none" | "normal" | "relaxed";
+
+export const LINE_HEIGHT_VALUES: Record<LineHeightLevel, number> = {
+  tight: 1.5,
+  normal: 1.8,
+  relaxed: 2.1,
+  loose: 2.5,
+};
+
+export const PARAGRAPH_SPACING_VALUES: Record<ParagraphSpacingLevel, number> = {
+  none: 0,
+  normal: 0.6,
+  relaxed: 1.2,
+};
+
 export interface ConversionOptions {
   /** 見出し1で章を自動分割する */
   splitByHeading: boolean;
@@ -15,6 +33,10 @@ export interface ConversionOptions {
   writingMode: "horizontal" | "vertical";
   /** 本文の先頭に章見出しを表示する */
   includeChapterTitle: boolean;
+  /** 行間 */
+  lineHeight: LineHeightLevel;
+  /** 段落間のアキ */
+  paragraphSpacing: ParagraphSpacingLevel;
 }
 
 export interface Chapter {
@@ -52,4 +74,6 @@ export const DEFAULT_OPTIONS: ConversionOptions = {
   splitByHeading: true,
   writingMode: "horizontal",
   includeChapterTitle: true,
+  lineHeight: "normal",
+  paragraphSpacing: "none",
 };

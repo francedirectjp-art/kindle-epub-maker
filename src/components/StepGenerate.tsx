@@ -69,7 +69,7 @@ export default function StepGenerate({
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-stone-900">5. EPUB を生成</h2>
+      <h2 className="text-xl font-bold text-stone-900">6. EPUB を生成</h2>
       <p className="mt-1 text-sm text-stone-500">
         設定内容で EPUB3 を生成します。完成したファイルは Amazon KDP に
         そのままアップロードできます。

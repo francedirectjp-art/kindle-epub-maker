@@ -1,10 +1,12 @@
 import JSZip from "jszip";
-import type {
-  BookMetadata,
-  Chapter,
-  ConversionOptions,
-  CoverImage,
-  ExtractedImage,
+import {
+  LINE_HEIGHT_VALUES,
+  PARAGRAPH_SPACING_VALUES,
+  type BookMetadata,
+  type Chapter,
+  type ConversionOptions,
+  type CoverImage,
+  type ExtractedImage,
 } from "./types";
 
 export interface BuildEpubInput {
@@ -63,24 +65,26 @@ function containerXml(): string {
 </container>`;
 }
 
-function styleCss(options: ConversionOptions): string {
+export function styleCss(options: ConversionOptions): string {
   const vertical = options.writingMode === "vertical";
   const writing = vertical
     ? "  writing-mode: vertical-rl;\n  -epub-writing-mode: vertical-rl;\n  -webkit-writing-mode: vertical-rl;\n"
     : "";
+  const lh = LINE_HEIGHT_VALUES[options.lineHeight];
+  const pSpace = PARAGRAPH_SPACING_VALUES[options.paragraphSpacing];
   return `@charset "UTF-8";
 html {
 ${writing}}
 body {
   margin: 1em 1.2em;
-  line-height: 1.8;
+  line-height: ${lh};
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
 }
 h1 { font-size: 1.6em; margin: 1.4em 0 0.8em; font-weight: bold; line-height: 1.4; }
 h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; font-weight: bold; }
 h3 { font-size: 1.1em; margin: 1em 0 0.5em; }
 h1.title { text-align: center; font-size: 2em; }
-p { margin: 0; text-indent: 1em; }
+p { margin: ${pSpace}em 0; text-indent: 1em; }
 p.subtitle { text-align: center; text-indent: 0; color: #555; }
 blockquote { margin: 1em 2em; color: #333; }
 img { max-width: 100%; height: auto; }

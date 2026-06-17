@@ -4,6 +4,7 @@ import StepUpload from "./components/StepUpload";
 import StepMetadata from "./components/StepMetadata";
 import StepCover from "./components/StepCover";
 import StepOptions from "./components/StepOptions";
+import StepPreview from "./components/StepPreview";
 import StepGenerate from "./components/StepGenerate";
 import {
   DEFAULT_METADATA,
@@ -13,7 +14,14 @@ import {
   type CoverImage,
 } from "./lib/types";
 
-const STEP_LABELS = ["原稿", "書籍情報", "表紙", "オプション", "生成"];
+const STEP_LABELS = [
+  "原稿",
+  "書籍情報",
+  "表紙",
+  "オプション",
+  "プレビュー",
+  "生成",
+];
 
 export default function App() {
   const [step, setStep] = useState(0);
@@ -95,6 +103,13 @@ export default function App() {
             <StepOptions options={options} onChange={setOptions} />
           )}
           {step === 4 && (
+            <StepPreview
+              arrayBuffer={arrayBuffer}
+              metadata={metadata}
+              options={options}
+            />
+          )}
+          {step === 5 && (
             <StepGenerate
               arrayBuffer={arrayBuffer}
               metadata={metadata}
