@@ -101,12 +101,16 @@ export default function StepPreview({
     const el = stageRef.current;
     if (!el) return;
     if (options.writingMode === "vertical") {
-      // 縦書き(vertical-rl): 「次」は読みの流れに沿って左へ
-      const step = el.clientWidth * 0.9;
-      el.scrollBy({ left: forward ? -step : step, behavior: "smooth" });
+      // 縦書き(vertical-rl) は横スクロール。CSS 仕様では scrollLeft=0 が
+      // 章の先頭 (右端表示)、forward は scrollLeft を大きくしていく方向。
+      // 一部ブラウザは scrollLeft を負値で表すが、相対加算なので問題ない。
+      const step = Math.max(200, el.clientWidth * 0.9);
+      const target = el.scrollLeft + (forward ? step : -step);
+      el.scrollTo({ left: target, behavior: "smooth" });
     } else {
-      const step = el.clientHeight * 0.9;
-      el.scrollBy({ top: forward ? step : -step, behavior: "smooth" });
+      const step = Math.max(200, el.clientHeight * 0.9);
+      const target = el.scrollTop + (forward ? step : -step);
+      el.scrollTo({ top: target, behavior: "smooth" });
     }
   };
 
@@ -117,16 +121,12 @@ export default function StepPreview({
   };
 
   // 章や書字方向が変わったらプレビューの先頭にスクロール
+  // (vertical-rl では scrollLeft=0 が章の先頭=右端表示なので 0 で OK)
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
-      el.scrollTo({
-        top: 0,
-        // 縦書きは右端が「先頭」なので scrollWidth へ
-        left: options.writingMode === "vertical" ? el.scrollWidth : 0,
-        behavior: "auto",
-      });
+      el.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
   }, [activeIndex, options.writingMode, currentChapter?.id]);
 
