@@ -97,22 +97,6 @@ export default function StepPreview({
   const currentChapter = chapters[activeIndex];
   const stageRef = useRef<HTMLDivElement>(null);
 
-  const goPage = (forward: boolean) => {
-    const el = stageRef.current;
-    if (!el) return;
-    const isVertical = options.writingMode === "vertical";
-    // scrollTo + behavior:'smooth' は一部ブラウザで無視されるため、
-    // scrollTop / scrollLeft に直接代入する確実な方式に切り替え。
-    // 縦書き(vertical-rl) は横スクロールで、forward = scrollLeft++ (CSS仕様)。
-    if (isVertical) {
-      const step = Math.max(240, el.clientWidth * 0.9);
-      el.scrollLeft = el.scrollLeft + (forward ? step : -step);
-    } else {
-      const step = Math.max(240, el.clientHeight * 0.9);
-      el.scrollTop = el.scrollTop + (forward ? step : -step);
-    }
-  };
-
   const goChapter = (delta: number) => {
     const next = activeIndex + delta;
     if (next < 0 || next >= chapters.length) return;
@@ -128,34 +112,6 @@ export default function StepPreview({
       el.scrollTo({ top: 0, left: 0, behavior: "auto" });
     });
   }, [activeIndex, options.writingMode, currentChapter?.id]);
-
-  // キーボード: 矢印 / スペース でページ送り
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea") return;
-      if (
-        (e.target as HTMLElement | null)?.getAttribute("contenteditable") ===
-        "true"
-      ) {
-        return;
-      }
-      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
-        e.preventDefault();
-        goPage(true);
-      } else if (
-        e.key === "ArrowLeft" ||
-        e.key === "PageUp" ||
-        (e.key === " " && e.shiftKey)
-      ) {
-        e.preventDefault();
-        goPage(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-    // goPage は ref + options を見るだけなので依存に入れないでもOKだが念のため
-  }, [options.writingMode]);
 
   const updateBlocks = (
     updater: (blocks: ParagraphBlock[]) => ParagraphBlock[],
@@ -297,37 +253,22 @@ export default function StepPreview({
             type="button"
             onClick={() => goChapter(-1)}
             disabled={activeIndex === 0}
-            className="rounded-lg px-3 py-1.5 text-xs text-stone-600 transition hover:bg-stone-200 disabled:opacity-30"
+            className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:opacity-30"
             title="前の章へ"
           >
-            « 章
+            « 前の章
           </button>
-          <div className="flex flex-1 items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => goPage(false)}
-              className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
-              title="前のページ (← / Shift+Space)"
-            >
-              ← 前のページ
-            </button>
-            <button
-              type="button"
-              onClick={() => goPage(true)}
-              className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
-              title="次のページ (→ / Space)"
-            >
-              次のページ →
-            </button>
-          </div>
+          <span className="text-xs text-stone-400">
+            {activeIndex + 1} / {chapters.length} 章
+          </span>
           <button
             type="button"
             onClick={() => goChapter(1)}
             disabled={activeIndex >= chapters.length - 1}
-            className="rounded-lg px-3 py-1.5 text-xs text-stone-600 transition hover:bg-stone-200 disabled:opacity-30"
+            className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100 disabled:opacity-30"
             title="次の章へ"
           >
-            章 »
+            次の章 »
           </button>
         </div>
       </div>
