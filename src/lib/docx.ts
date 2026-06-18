@@ -127,9 +127,11 @@ export async function parseDocx(
   arrayBuffer: ArrayBuffer,
   options: ConversionOptions,
 ): Promise<ParsedDocx> {
+  // Word 原稿で書き手が意図して入れた空白行(Enter Enter)を保持する。
+  // これらは EPUB 側で空段落として残り、CSS で 1 行分のアキになる。
   const result = await mammoth.convertToHtml(
     { arrayBuffer },
-    { styleMap: STYLE_MAP, ignoreEmptyParagraphs: true },
+    { styleMap: STYLE_MAP, ignoreEmptyParagraphs: false },
   );
   const messages = result.messages.map((m) => m.message);
 

@@ -93,6 +93,8 @@ h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; font-weight: bold; }
 h3 { font-size: 1.1em; margin: 1em 0 0.5em; }
 h1.title { text-align: center; font-size: 2em; }
 p { margin: ${pSpace}em 0; text-indent: 1em; }
+/* 著者が原稿で意図的に入れた空白行 (Enter Enter) を 1 行分のアキとして見せる */
+p:empty { text-indent: 0; min-height: 1em; min-width: 1em; }
 p.subtitle { text-align: center; text-indent: 0; color: #555; }
 blockquote { margin: 1em 2em; color: #333; }
 img { max-width: 100%; height: auto; }
