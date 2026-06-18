@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { previewStageCss } from "../lib/epub";
 import type {
   BookMetadata,
@@ -14,6 +14,11 @@ interface StepPreviewProps {
   metadata: BookMetadata;
   options: ConversionOptions;
   onChange: (next: EditableChapter[]) => void;
+  onAddImage: (
+    chapterIndex: number,
+    blockIndex: number,
+    file: File,
+  ) => Promise<void> | void;
 }
 
 function buildImageUrls(images: ExtractedImage[]): Record<string, string> {
@@ -61,10 +66,15 @@ export default function StepPreview({
   metadata,
   options,
   onChange,
+  onAddImage,
 }: StepPreviewProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [editMode, setEditMode] = useState(false);
+  const [pendingImageIndex, setPendingImageIndex] = useState<number | null>(
+    null,
+  );
   const imageUrlsRef = useRef<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Object.values(imageUrlsRef.current).forEach((u) => URL.revokeObjectURL(u));
@@ -103,6 +113,20 @@ export default function StepPreview({
       copy.splice(index, 0, { id: nextBlockId(), tag: "EMPTY", outerHtml: "" });
       return copy;
     });
+  };
+
+  const triggerImageInsert = (index: number) => {
+    setPendingImageIndex(index);
+    fileInputRef.current?.click();
+  };
+
+  const onFileSelected = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && pendingImageIndex !== null) {
+      await onAddImage(activeIndex, pendingImageIndex, file);
+      setPendingImageIndex(null);
+    }
+    e.target.value = "";
   };
 
   const removeBlock = (id: string) => {
@@ -197,12 +221,21 @@ export default function StepPreview({
               imageUrls={imageUrlsRef.current}
               editMode={editMode}
               onInsertEmptyAt={insertEmptyAt}
+              onInsertImageAt={triggerImageInsert}
               onRemove={removeBlock}
               onEdit={updateBlockHtml}
             />
           )}
         </div>
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        onChange={onFileSelected}
+        className="hidden"
+      />
 
       <p className="mt-3 text-xs text-stone-400">
         ※ 編集モードで段落を追加・削除・編集した内容は、EPUB
@@ -217,6 +250,7 @@ interface BlockListProps {
   imageUrls: Record<string, string>;
   editMode: boolean;
   onInsertEmptyAt: (index: number) => void;
+  onInsertImageAt: (index: number) => void;
   onRemove: (id: string) => void;
   onEdit: (id: string, innerHtml: string) => void;
 }
@@ -226,12 +260,18 @@ function BlockList({
   imageUrls,
   editMode,
   onInsertEmptyAt,
+  onInsertImageAt,
   onRemove,
   onEdit,
 }: BlockListProps) {
   return (
     <div>
-      {editMode && <InsertSlot onClick={() => onInsertEmptyAt(0)} />}
+      {editMode && (
+        <InsertSlot
+          onInsertEmpty={() => onInsertEmptyAt(0)}
+          onInsertImage={() => onInsertImageAt(0)}
+        />
+      )}
       {blocks.map((b, i) => (
         <div key={b.id}>
           <BlockView
@@ -241,26 +281,44 @@ function BlockList({
             onRemove={() => onRemove(b.id)}
             onEdit={(html) => onEdit(b.id, html)}
           />
-          {editMode && <InsertSlot onClick={() => onInsertEmptyAt(i + 1)} />}
+          {editMode && (
+            <InsertSlot
+              onInsertEmpty={() => onInsertEmptyAt(i + 1)}
+              onInsertImage={() => onInsertImageAt(i + 1)}
+            />
+          )}
         </div>
       ))}
     </div>
   );
 }
 
-function InsertSlot({ onClick }: { onClick: () => void }) {
+function InsertSlot({
+  onInsertEmpty,
+  onInsertImage,
+}: {
+  onInsertEmpty: () => void;
+  onInsertImage: () => void;
+}) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group my-0.5 flex w-full items-center justify-center py-1 text-[10px] text-stone-300 transition hover:text-stone-700"
-    >
+    <div className="group my-0.5 flex w-full items-center justify-center gap-1 py-1 text-[10px] text-stone-300">
       <span className="h-px flex-1 bg-stone-200 group-hover:bg-stone-400" />
-      <span className="mx-2 rounded-full border border-stone-200 bg-white px-2 py-0.5 group-hover:border-stone-400">
+      <button
+        type="button"
+        onClick={onInsertEmpty}
+        className="rounded-full border border-stone-200 bg-white px-2 py-0.5 transition hover:border-stone-400 hover:text-stone-700"
+      >
         ＋ 空白行
-      </span>
+      </button>
+      <button
+        type="button"
+        onClick={onInsertImage}
+        className="rounded-full border border-stone-200 bg-white px-2 py-0.5 transition hover:border-emerald-400 hover:text-emerald-700"
+      >
+        🖼 画像
+      </button>
       <span className="h-px flex-1 bg-stone-200 group-hover:bg-stone-400" />
-    </button>
+    </div>
   );
 }
 
@@ -311,6 +369,24 @@ function BlockView({
           type="button"
           onClick={onRemove}
           className="absolute right-1 top-1 hidden rounded bg-white px-1.5 py-0.5 text-[10px] text-red-600 shadow group-hover:inline-block"
+        >
+          ✕ 削除
+        </button>
+      </div>
+    );
+  }
+
+  // 画像入りブロックは編集モードでも contenteditable にせず削除のみ
+  const isImageBlock = /<img\b/i.test(block.outerHtml);
+  if (isImageBlock) {
+    return (
+      <div className="group relative my-1 rounded border border-dashed border-emerald-300 bg-emerald-50/40 p-2">
+        <div dangerouslySetInnerHTML={{ __html: displayHtml }} />
+        <button
+          type="button"
+          onClick={onRemove}
+          className="absolute right-1 top-1 hidden rounded bg-white px-1.5 py-0.5 text-[10px] text-red-600 shadow group-hover:inline-block"
+          title="この画像を削除"
         >
           ✕ 削除
         </button>

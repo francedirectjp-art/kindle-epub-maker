@@ -15,7 +15,15 @@ import {
   type CoverImage,
   type EditableChapter,
   type ExtractedImage,
+  type ParagraphBlock,
 } from "./lib/types";
+
+const IMAGE_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
 
 const STEP_LABELS = [
   "原稿",
@@ -148,6 +156,41 @@ export default function App() {
               metadata={metadata}
               options={options}
               onChange={setChapters}
+              onAddImage={async (chapterIndex, blockIndex, file) => {
+                const buf = await file.arrayBuffer();
+                const data = new Uint8Array(buf);
+                const mediaType = file.type || "image/png";
+                const ext = IMAGE_EXT[mediaType] ?? "png";
+                const seq = images.length + 1;
+                const filename = `user-image-${seq}.${ext}`;
+                const id = `userimg${seq}`;
+                const newImage: ExtractedImage = {
+                  id,
+                  filename,
+                  mediaType,
+                  data,
+                };
+                const newBlock: ParagraphBlock = {
+                  id: `img-${Date.now()}`,
+                  tag: "p",
+                  outerHtml: `<p style="text-align:center;text-indent:0;margin:1em 0;"><img src="../images/${filename}" alt=""/></p>`,
+                };
+                setImages([...images, newImage]);
+                setChapters(
+                  chapters.map((c, i) =>
+                    i === chapterIndex
+                      ? {
+                          ...c,
+                          blocks: [
+                            ...c.blocks.slice(0, blockIndex),
+                            newBlock,
+                            ...c.blocks.slice(blockIndex),
+                          ],
+                        }
+                      : c,
+                  ),
+                );
+              }}
             />
           )}
           {step === 5 && (
