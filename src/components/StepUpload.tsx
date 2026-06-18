@@ -12,8 +12,10 @@ export default function StepUpload({ file, onFile }: StepUploadProps) {
 
   const accept = (f: File | undefined) => {
     if (!f) return;
-    if (!/\.docx$/i.test(f.name)) {
-      setError("Word の .docx ファイルを選んでください（.doc は非対応）。");
+    if (!/\.(docx|epub)$/i.test(f.name)) {
+      setError(
+        "Word の .docx ファイル、または .epub ファイルを選んでください。",
+      );
       return;
     }
     setError(null);
@@ -22,10 +24,14 @@ export default function StepUpload({ file, onFile }: StepUploadProps) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-stone-900">1. 原稿をアップロード</h2>
+      <h2 className="text-xl font-bold text-stone-900">
+        1. 原稿または EPUB をアップロード
+      </h2>
       <p className="mt-1 text-sm text-stone-500">
-        Word の <code className="rounded bg-stone-100 px-1">.docx</code> 形式に対応。
-        ファイルはブラウザ内だけで処理され、サーバーには送信されません。
+        Word の <code className="rounded bg-stone-100 px-1">.docx</code>{" "}
+        を取り込んで新しく本を作るか、すでにある{" "}
+        <code className="rounded bg-stone-100 px-1">.epub</code>{" "}
+        を読み込んで編集できます。 ファイルはブラウザ内だけで処理されます。
       </p>
 
       <div
@@ -49,13 +55,13 @@ export default function StepUpload({ file, onFile }: StepUploadProps) {
       >
         <div className="text-4xl">📄</div>
         <p className="mt-3 font-medium text-stone-700">
-          ここに .docx をドラッグ&ドロップ
+          ここに .docx または .epub をドラッグ&ドロップ
         </p>
         <p className="mt-1 text-sm text-stone-400">またはクリックして選択</p>
         <input
           ref={inputRef}
           type="file"
-          accept=".docx"
+          accept=".docx,.epub,application/epub+zip"
           className="hidden"
           onChange={(e) => accept(e.target.files?.[0])}
         />
@@ -65,14 +71,19 @@ export default function StepUpload({ file, onFile }: StepUploadProps) {
 
       {file && (
         <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <span className="text-xl">✅</span>
+          <span className="text-xl">
+            {/\.epub$/i.test(file.name) ? "📘" : "✅"}
+          </span>
           <div className="min-w-0">
             <p className="truncate font-medium text-stone-800">{file.name}</p>
             <p className="text-xs text-stone-500">
               {(file.size / 1024).toLocaleString(undefined, {
                 maximumFractionDigits: 0,
               })}{" "}
-              KB
+              KB ・{" "}
+              {/\.epub$/i.test(file.name)
+                ? "EPUB 編集モード"
+                : "Word 取り込み"}
             </p>
           </div>
         </div>

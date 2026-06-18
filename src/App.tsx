@@ -7,6 +7,7 @@ import StepOptions from "./components/StepOptions";
 import StepPreview from "./components/StepPreview";
 import StepGenerate from "./components/StepGenerate";
 import { htmlToBlocks, parseDocx } from "./lib/docx";
+import { loadEpub } from "./lib/epubReader";
 import {
   DEFAULT_METADATA,
   DEFAULT_OPTIONS,
@@ -89,16 +90,62 @@ export default function App() {
   const canProceed = useMemo(() => {
     switch (step) {
       case 0:
-        return !!file && !!arrayBuffer;
+        // .docx は arrayBuffer 経由でパース、.epub は直接 chapters に入る
+        return !!file && (!!arrayBuffer || chapters.length > 0);
       case 1:
         return metadata.title.trim() !== "" && metadata.author.trim() !== "";
       default:
         return true;
     }
-  }, [step, file, arrayBuffer, metadata]);
+  }, [step, file, arrayBuffer, chapters.length, metadata]);
 
   const handleFile = async (f: File) => {
     setFile(f);
+
+    if (/\.epub$/i.test(f.name)) {
+      // EPUB 編集モード: 解凍してメタデータ・章・画像・表紙を復元
+      try {
+        const loaded = await loadEpub(f);
+        // arrayBuffer は使わない (再パースしない) ので null で OK
+        setArrayBuffer(null);
+
+        setMetadata((m) => ({
+          ...m,
+          ...Object.fromEntries(
+            Object.entries(loaded.metadata).filter(
+              ([, v]) => v !== undefined && v !== "",
+            ),
+          ),
+          title:
+            loaded.metadata.title ||
+            m.title ||
+            f.name.replace(/\.epub$/i, ""),
+        }));
+        setOptions((o) => ({ ...o, ...loaded.options }));
+        setChapters(loaded.chapters);
+        setImages(loaded.images);
+        if (loaded.cover) {
+          setCover(loaded.cover);
+          const blob = new Blob([loaded.cover.data], {
+            type: loaded.cover.mediaType,
+          });
+          setCoverPreview(URL.createObjectURL(blob));
+        }
+        setParseMessages(loaded.warnings);
+        // 再パースを抑止するため、現在のシグネチャを採用済みとマーク
+        setParseSig("__epub_loaded__");
+      } catch (e) {
+        console.error(e);
+        setParseMessages([
+          e instanceof Error
+            ? `EPUB 読み込みエラー: ${e.message}`
+            : "EPUB を読み込めませんでした。",
+        ]);
+      }
+      return;
+    }
+
+    // 既存の Word(.docx) フロー
     setArrayBuffer(await f.arrayBuffer());
     if (!metadata.title) {
       setMetadata((m) => ({ ...m, title: f.name.replace(/\.docx$/i, "") }));
