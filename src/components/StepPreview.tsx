@@ -100,17 +100,16 @@ export default function StepPreview({
   const goPage = (forward: boolean) => {
     const el = stageRef.current;
     if (!el) return;
-    if (options.writingMode === "vertical") {
-      // 縦書き(vertical-rl) は横スクロール。CSS 仕様では scrollLeft=0 が
-      // 章の先頭 (右端表示)、forward は scrollLeft を大きくしていく方向。
-      // 一部ブラウザは scrollLeft を負値で表すが、相対加算なので問題ない。
-      const step = Math.max(200, el.clientWidth * 0.9);
-      const target = el.scrollLeft + (forward ? step : -step);
-      el.scrollTo({ left: target, behavior: "smooth" });
+    const isVertical = options.writingMode === "vertical";
+    // scrollTo + behavior:'smooth' は一部ブラウザで無視されるため、
+    // scrollTop / scrollLeft に直接代入する確実な方式に切り替え。
+    // 縦書き(vertical-rl) は横スクロールで、forward = scrollLeft++ (CSS仕様)。
+    if (isVertical) {
+      const step = Math.max(240, el.clientWidth * 0.9);
+      el.scrollLeft = el.scrollLeft + (forward ? step : -step);
     } else {
-      const step = Math.max(200, el.clientHeight * 0.9);
-      const target = el.scrollTop + (forward ? step : -step);
-      el.scrollTo({ top: target, behavior: "smooth" });
+      const step = Math.max(240, el.clientHeight * 0.9);
+      el.scrollTop = el.scrollTop + (forward ? step : -step);
     }
   };
 
@@ -273,9 +272,11 @@ export default function StepPreview({
         <style>{css}</style>
         <div
           ref={stageRef}
-          className="epub-stage overflow-auto bg-[#faf9f6] p-5"
+          className="epub-stage bg-[#faf9f6] p-5"
           style={{
             height: "70vh",
+            overflow: "auto",
+            scrollBehavior: "smooth",
           }}
         >
           {currentChapter && (
