@@ -71,6 +71,22 @@ function containerXml(): string {
  * styleCss は body/p などをグローバルに当てるので、ホストページと衝突する。
  * こちらは ".epub-stage" クラスにスコープした版で、ボタン類と隔離して使う。
  */
+/**
+ * writing-mode に応じてブロック方向のマージン (上下/左右) を切り替えるヘルパ。
+ * 縦書きでは「前」=右、「後」=左 になるので、上下方向の指定は意味を持たない。
+ */
+function blockMargin(
+  before: number,
+  after: number,
+  vertical: boolean,
+  inlineGap = 0,
+): string {
+  // (top, right, bottom, left)
+  return vertical
+    ? `${inlineGap}em ${before}em ${inlineGap}em ${after}em`
+    : `${before}em ${inlineGap}em ${after}em ${inlineGap}em`;
+}
+
 export function previewStageCss(options: ConversionOptions): string {
   const vertical = options.writingMode === "vertical";
   const lh = LINE_HEIGHT_VALUES[options.lineHeight];
@@ -82,14 +98,15 @@ export function previewStageCss(options: ConversionOptions): string {
   line-height: ${lh};
   color: #1a1a1a;
 }
-.epub-stage h1 { font-size: 1.6em; margin: 1.4em 0 0.8em; font-weight: bold; line-height: 1.4; }
-.epub-stage h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; font-weight: bold; }
-.epub-stage h3 { font-size: 1.1em; margin: 1em 0 0.5em; }
+.epub-stage h1 { font-size: 1.6em; margin: ${blockMargin(2.4, 1.2, vertical)}; font-weight: bold; line-height: 1.4; }
+.epub-stage h2 { font-size: 1.3em; margin: ${blockMargin(2.0, 1.0, vertical)}; font-weight: bold; }
+.epub-stage h3 { font-size: 1.1em; margin: ${blockMargin(1.6, 0.8, vertical)}; font-weight: bold; }
+.epub-stage h4 { font-size: 1em; margin: ${blockMargin(1.4, 0.6, vertical)}; font-weight: bold; }
 .epub-stage h1.title { text-align: center; font-size: 2em; }
-.epub-stage p { margin: ${pSpace}em 0; text-indent: 1em; }
+.epub-stage p { margin: ${blockMargin(pSpace, pSpace, vertical)}; text-indent: 1em; }
 .epub-stage p.subtitle { text-align: center; text-indent: 0; color: #555; }
 .epub-stage p.empty-marker { text-indent: 0; min-height: 1em; min-width: 1em; }
-.epub-stage blockquote { margin: 1em 2em; color: #333; }
+.epub-stage blockquote { margin: ${blockMargin(1, 1, vertical, 1)}; color: #333; }
 .epub-stage img { max-width: 100%; height: auto; }
 .epub-stage ol, .epub-stage ul { margin: 0.5em 0 0.5em 1.5em; }
 `;
@@ -117,15 +134,16 @@ body {
   line-height: ${lh};${letterSpacingDecl}
   font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
 }
-h1 { font-size: 1.6em; margin: 1.4em 0 0.8em; font-weight: bold; line-height: 1.4; }
-h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; font-weight: bold; }
-h3 { font-size: 1.1em; margin: 1em 0 0.5em; }
+h1 { font-size: 1.6em; margin: ${blockMargin(2.4, 1.2, vertical)}; font-weight: bold; line-height: 1.4; }
+h2 { font-size: 1.3em; margin: ${blockMargin(2.0, 1.0, vertical)}; font-weight: bold; }
+h3 { font-size: 1.1em; margin: ${blockMargin(1.6, 0.8, vertical)}; font-weight: bold; }
+h4 { font-size: 1em; margin: ${blockMargin(1.4, 0.6, vertical)}; font-weight: bold; }
 h1.title { text-align: center; font-size: 2em; }
-p { margin: ${pSpace}em 0; text-indent: 1em; }
+p { margin: ${blockMargin(pSpace, pSpace, vertical)}; text-indent: 1em; }
 /* 著者が原稿で意図的に入れた空白行 (Enter Enter) を 1 行分のアキとして見せる */
 p:empty { text-indent: 0; min-height: 1em; min-width: 1em; }
 p.subtitle { text-align: center; text-indent: 0; color: #555; }
-blockquote { margin: 1em 2em; color: #333; }
+blockquote { margin: ${blockMargin(1, 1, vertical, 1)}; color: #333; }
 img { max-width: 100%; height: auto; }
 ol, ul { margin: 0.5em 0 0.5em 1.5em; }
 nav#toc ol { list-style: none; padding: 0; }
