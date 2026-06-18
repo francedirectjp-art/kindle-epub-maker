@@ -66,6 +66,35 @@ function containerXml(): string {
 </container>`;
 }
 
+/**
+ * プレビュー画面 (React 直接レンダリング) 用のスタイル。
+ * styleCss は body/p などをグローバルに当てるので、ホストページと衝突する。
+ * こちらは ".epub-stage" クラスにスコープした版で、ボタン類と隔離して使う。
+ */
+export function previewStageCss(options: ConversionOptions): string {
+  const vertical = options.writingMode === "vertical";
+  const lh = LINE_HEIGHT_VALUES[options.lineHeight];
+  const pSpace = PARAGRAPH_SPACING_VALUES[options.paragraphSpacing];
+  return `
+.epub-stage {
+  ${vertical ? "writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;" : ""}
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+  line-height: ${lh};
+  color: #1a1a1a;
+}
+.epub-stage h1 { font-size: 1.6em; margin: 1.4em 0 0.8em; font-weight: bold; line-height: 1.4; }
+.epub-stage h2 { font-size: 1.3em; margin: 1.2em 0 0.6em; font-weight: bold; }
+.epub-stage h3 { font-size: 1.1em; margin: 1em 0 0.5em; }
+.epub-stage h1.title { text-align: center; font-size: 2em; }
+.epub-stage p { margin: ${pSpace}em 0; text-indent: 1em; }
+.epub-stage p.subtitle { text-align: center; text-indent: 0; color: #555; }
+.epub-stage p.empty-marker { text-indent: 0; min-height: 1em; min-width: 1em; }
+.epub-stage blockquote { margin: 1em 2em; color: #333; }
+.epub-stage img { max-width: 100%; height: auto; }
+.epub-stage ol, .epub-stage ul { margin: 0.5em 0 0.5em 1.5em; }
+`;
+}
+
 export function styleCss(options: ConversionOptions): string {
   const vertical = options.writingMode === "vertical";
   const writing = vertical

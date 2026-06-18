@@ -1,5 +1,10 @@
 import * as mammoth from "mammoth/mammoth.browser";
-import type { Chapter, ConversionOptions, ExtractedImage } from "./types";
+import type {
+  Chapter,
+  ConversionOptions,
+  ExtractedImage,
+  ParagraphBlock,
+} from "./types";
 
 export interface ParsedDocx {
   chapters: Chapter[];
@@ -170,6 +175,46 @@ export async function parseDocx(
 export async function previewText(arrayBuffer: ArrayBuffer): Promise<string> {
   const res = await mammoth.extractRawText({ arrayBuffer });
   return res.value.slice(0, 600);
+}
+
+/**
+ * 章HTML を「段落ブロック」配列に分解する。
+ * 各トップレベル要素を 1 ブロックとして扱う。
+ * 空段落 <p></p> は EMPTY ブロックに変換し、UI で「空白行」として表示できるようにする。
+ */
+export function htmlToBlocks(html: string): ParagraphBlock[] {
+  const xmlDoc = new DOMParser().parseFromString(
+    `<root xmlns="http://www.w3.org/1999/xhtml">${html}</root>`,
+    "application/xhtml+xml",
+  );
+  const errs = xmlDoc.getElementsByTagName("parsererror");
+  if (errs.length > 0) {
+    // パース失敗時のフォールバック: 1ブロックとして返す
+    return [{ id: "b1", tag: "p", outerHtml: `<p>${html}</p>` }];
+  }
+  const root = xmlDoc.documentElement;
+  const blocks: ParagraphBlock[] = [];
+  let counter = 0;
+  for (const child of Array.from(root.children)) {
+    const tag = child.tagName.toLowerCase();
+    counter++;
+    const id = `b${counter}`;
+    const isEmptyP = tag === "p" && (child.textContent ?? "").trim() === "" &&
+      !child.querySelector("img");
+    if (isEmptyP) {
+      blocks.push({ id, tag: "EMPTY", outerHtml: "" });
+    } else {
+      blocks.push({ id, tag, outerHtml: new XMLSerializer().serializeToString(child) });
+    }
+  }
+  return blocks;
+}
+
+/** 段落ブロック配列を章HTMLに戻す。EMPTYは <p></p> として書き出す。 */
+export function blocksToHtml(blocks: ParagraphBlock[]): string {
+  return blocks
+    .map((b) => (b.tag === "EMPTY" ? "<p></p>" : b.outerHtml))
+    .join("\n");
 }
 
 /**

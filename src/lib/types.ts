@@ -60,6 +60,23 @@ export interface Chapter {
   html: string;
 }
 
+/** プレビューで段落単位に編集するためのブロック */
+export interface ParagraphBlock {
+  /** UI上のキー (再生成しない) */
+  id: string;
+  /** 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'blockquote' | 'EMPTY' など */
+  tag: string;
+  /** 要素全体の outerHTML。EMPTY のときは空文字 (空白段落マーカー) */
+  outerHtml: string;
+}
+
+export interface EditableChapter {
+  id: string;
+  filename: string;
+  title: string;
+  blocks: ParagraphBlock[];
+}
+
 export interface ExtractedImage {
   id: string; // "img1"
   filename: string; // "image1.png"

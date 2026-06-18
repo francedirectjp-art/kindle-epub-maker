@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Stepper from "./components/Stepper";
 import StepUpload from "./components/StepUpload";
 import StepMetadata from "./components/StepMetadata";
@@ -6,12 +6,15 @@ import StepCover from "./components/StepCover";
 import StepOptions from "./components/StepOptions";
 import StepPreview from "./components/StepPreview";
 import StepGenerate from "./components/StepGenerate";
+import { htmlToBlocks, parseDocx } from "./lib/docx";
 import {
   DEFAULT_METADATA,
   DEFAULT_OPTIONS,
   type BookMetadata,
   type ConversionOptions,
   type CoverImage,
+  type EditableChapter,
+  type ExtractedImage,
 } from "./lib/types";
 
 const STEP_LABELS = [
@@ -33,6 +36,42 @@ export default function App() {
   const [options, setOptions] = useState<ConversionOptions>(DEFAULT_OPTIONS);
   const [cover, setCover] = useState<CoverImage | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [chapters, setChapters] = useState<EditableChapter[]>([]);
+  const [images, setImages] = useState<ExtractedImage[]>([]);
+  const [parseSig, setParseSig] = useState<string>("");
+  const [parseMessages, setParseMessages] = useState<string[]>([]);
+
+  // 再パースが必要なオプション (構造に影響するもの) だけをシグネチャに含める。
+  // 行間/書字方向/段落間アキは表示用なので、変更しても編集を巻き戻さない。
+  const parseSigKey = useMemo(
+    () =>
+      `${arrayBuffer ? arrayBuffer.byteLength : 0}-${options.splitByHeading}-${options.includeChapterTitle}`,
+    [arrayBuffer, options.splitByHeading, options.includeChapterTitle],
+  );
+
+  useEffect(() => {
+    if (!arrayBuffer) return;
+    if (parseSigKey === parseSig) return;
+    let cancelled = false;
+    (async () => {
+      const parsed = await parseDocx(arrayBuffer.slice(0), options);
+      if (cancelled) return;
+      setChapters(
+        parsed.chapters.map((c) => ({
+          id: c.id,
+          filename: c.filename,
+          title: c.title,
+          blocks: htmlToBlocks(c.html),
+        })),
+      );
+      setImages(parsed.images);
+      setParseMessages(parsed.messages);
+      setParseSig(parseSigKey);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [arrayBuffer, parseSigKey, parseSig, options]);
 
   const goto = (next: number) => {
     setStep(next);
@@ -104,17 +143,21 @@ export default function App() {
           )}
           {step === 4 && (
             <StepPreview
-              arrayBuffer={arrayBuffer}
+              chapters={chapters}
+              images={images}
               metadata={metadata}
               options={options}
+              onChange={setChapters}
             />
           )}
           {step === 5 && (
             <StepGenerate
-              arrayBuffer={arrayBuffer}
+              chapters={chapters}
+              images={images}
               metadata={metadata}
               options={options}
               cover={cover}
+              parseMessages={parseMessages}
             />
           )}
 

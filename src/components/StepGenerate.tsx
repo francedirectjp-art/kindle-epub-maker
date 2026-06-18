@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { saveAs } from "file-saver";
-import { applyVerticalCharSpacing, parseDocx } from "../lib/docx";
+import { applyVerticalCharSpacing, blocksToHtml } from "../lib/docx";
 import { buildEpub, safeFilename } from "../lib/epub";
 import {
   VERTICAL_LETTER_SPACING_VALUES,
   type BookMetadata,
+  type Chapter,
   type ConversionOptions,
   type CoverImage,
+  type EditableChapter,
+  type ExtractedImage,
 } from "../lib/types";
 
 interface StepGenerateProps {
-  arrayBuffer: ArrayBuffer | null;
+  chapters: EditableChapter[];
+  images: ExtractedImage[];
   metadata: BookMetadata;
   options: ConversionOptions;
   cover: CoverImage | null;
+  parseMessages: string[];
 }
 
 interface Result {
@@ -25,56 +30,58 @@ interface Result {
 }
 
 export default function StepGenerate({
-  arrayBuffer,
+  chapters,
+  images,
   metadata,
   options,
   cover,
+  parseMessages,
 }: StepGenerateProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
 
   const generate = async () => {
-    if (!arrayBuffer) return;
+    if (chapters.length === 0) return;
     setBusy(true);
     setError(null);
     setResult(null);
     try {
-      // ArrayBuffer は内部で detach されうるのでコピーを渡す
-      const parsed = await parseDocx(arrayBuffer.slice(0), options);
-      // 縦書きで letter-spacing が効かないリーダー対策:
-      // 各文字を span でくるんで padding-bottom を当てる方法に切り替える
       const spacing =
         options.writingMode === "vertical"
           ? VERTICAL_LETTER_SPACING_VALUES[options.lineHeight]
           : 0;
-      const chapters =
-        spacing > 0
-          ? parsed.chapters.map((ch) => ({
-              ...ch,
-              html: applyVerticalCharSpacing(ch.html, spacing),
-            }))
-          : parsed.chapters;
+      const epubChapters: Chapter[] = chapters.map((c) => {
+        const html = blocksToHtml(c.blocks);
+        return {
+          id: c.id,
+          filename: c.filename,
+          title: c.title,
+          html: spacing > 0 ? applyVerticalCharSpacing(html, spacing) : html,
+        };
+      });
       const modified = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
       const blob = await buildEpub({
         metadata,
         options,
-        chapters,
-        images: parsed.images,
+        chapters: epubChapters,
+        images,
         cover,
         modified,
       });
       setResult({
         blob,
         filename: safeFilename(metadata.title),
-        chapters: parsed.chapters.length,
-        images: parsed.images.length,
-        messages: parsed.messages.slice(0, 5),
+        chapters: epubChapters.length,
+        images: images.length,
+        messages: parseMessages.slice(0, 5),
       });
     } catch (e) {
       console.error(e);
       setError(
-        e instanceof Error ? e.message : "変換中に予期しないエラーが発生しました。",
+        e instanceof Error
+          ? e.message
+          : "変換中に予期しないエラーが発生しました。",
       );
     } finally {
       setBusy(false);
@@ -112,7 +119,7 @@ export default function StepGenerate({
 
       <button
         type="button"
-        disabled={busy || !arrayBuffer}
+        disabled={busy || chapters.length === 0}
         onClick={generate}
         className="mt-6 w-full rounded-xl bg-stone-900 py-3 font-semibold text-white transition hover:bg-stone-800 disabled:opacity-50"
       >
@@ -147,7 +154,9 @@ export default function StepGenerate({
           </button>
           {result.messages.length > 0 && (
             <details className="mt-4 text-xs text-stone-600">
-              <summary className="cursor-pointer">変換時の注意 ({result.messages.length})</summary>
+              <summary className="cursor-pointer">
+                変換時の注意 ({result.messages.length})
+              </summary>
               <ul className="mt-2 list-disc space-y-1 pl-5">
                 {result.messages.map((m, i) => (
                   <li key={i}>{m}</li>
