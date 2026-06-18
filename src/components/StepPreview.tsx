@@ -95,6 +95,68 @@ export default function StepPreview({
 
   const css = useMemo(() => previewStageCss(options), [options]);
   const currentChapter = chapters[activeIndex];
+  const stageRef = useRef<HTMLDivElement>(null);
+
+  const goPage = (forward: boolean) => {
+    const el = stageRef.current;
+    if (!el) return;
+    if (options.writingMode === "vertical") {
+      // 縦書き(vertical-rl): 「次」は読みの流れに沿って左へ
+      const step = el.clientWidth * 0.9;
+      el.scrollBy({ left: forward ? -step : step, behavior: "smooth" });
+    } else {
+      const step = el.clientHeight * 0.9;
+      el.scrollBy({ top: forward ? step : -step, behavior: "smooth" });
+    }
+  };
+
+  const goChapter = (delta: number) => {
+    const next = activeIndex + delta;
+    if (next < 0 || next >= chapters.length) return;
+    setActiveIndex(next);
+  };
+
+  // 章や書字方向が変わったらプレビューの先頭にスクロール
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.scrollTo({
+        top: 0,
+        // 縦書きは右端が「先頭」なので scrollWidth へ
+        left: options.writingMode === "vertical" ? el.scrollWidth : 0,
+        behavior: "auto",
+      });
+    });
+  }, [activeIndex, options.writingMode, currentChapter?.id]);
+
+  // キーボード: 矢印 / スペース でページ送り
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+      if (
+        (e.target as HTMLElement | null)?.getAttribute("contenteditable") ===
+        "true"
+      ) {
+        return;
+      }
+      if (e.key === "ArrowRight" || e.key === " " || e.key === "PageDown") {
+        e.preventDefault();
+        goPage(true);
+      } else if (
+        e.key === "ArrowLeft" ||
+        e.key === "PageUp" ||
+        (e.key === " " && e.shiftKey)
+      ) {
+        e.preventDefault();
+        goPage(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // goPage は ref + options を見るだけなので依存に入れないでもOKだが念のため
+  }, [options.writingMode]);
 
   const updateBlocks = (
     updater: (blocks: ParagraphBlock[]) => ParagraphBlock[],
@@ -210,6 +272,7 @@ export default function StepPreview({
 
         <style>{css}</style>
         <div
+          ref={stageRef}
           className="epub-stage overflow-auto bg-[#faf9f6] p-5"
           style={{
             height: "70vh",
@@ -226,6 +289,45 @@ export default function StepPreview({
               onEdit={updateBlockHtml}
             />
           )}
+        </div>
+
+        <div className="flex items-center justify-between gap-2 border-t border-stone-200 bg-stone-50 px-3 py-2">
+          <button
+            type="button"
+            onClick={() => goChapter(-1)}
+            disabled={activeIndex === 0}
+            className="rounded-lg px-3 py-1.5 text-xs text-stone-600 transition hover:bg-stone-200 disabled:opacity-30"
+            title="前の章へ"
+          >
+            « 章
+          </button>
+          <div className="flex flex-1 items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => goPage(false)}
+              className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
+              title="前のページ (← / Shift+Space)"
+            >
+              ← 前のページ
+            </button>
+            <button
+              type="button"
+              onClick={() => goPage(true)}
+              className="rounded-lg border border-stone-300 bg-white px-4 py-1.5 text-xs text-stone-700 transition hover:bg-stone-100"
+              title="次のページ (→ / Space)"
+            >
+              次のページ →
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => goChapter(1)}
+            disabled={activeIndex >= chapters.length - 1}
+            className="rounded-lg px-3 py-1.5 text-xs text-stone-600 transition hover:bg-stone-200 disabled:opacity-30"
+            title="次の章へ"
+          >
+            章 »
+          </button>
         </div>
       </div>
 
